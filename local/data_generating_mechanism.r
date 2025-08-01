@@ -19,7 +19,8 @@ generate_data <- function(n, variability_type) {
       (0.03 + 0.03 * a) * w1^2 + (0.12 + 0.08 * a) * w2
   }
     y <- rnorm(n, 1.3 * w2 - 0.5 * log(w1^2) + 2 * a + 3.5 * a * w2, sd_y)
-    return(data.frame(w1, w2, a, y))
+    y_sq <- y^2
+    return(data.frame(w1, w2, a, y, y_sq))
 }
 
 # define a function to calculate the true nuisance parameters
