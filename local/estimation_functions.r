@@ -52,13 +52,13 @@ estimate_causal_es <- function(data) {
     covariates = c("w1", "w2")
    )
 
-   # make a sl for regression
+   # make a sl for regression taks
    sl_reg <- Lrnr_sl$new(
     learners = stack,
     metalearner = Lrnr_nnls$new(eval_function = loss_squared_error)
    )
 
-   # define the tasks for regression
+   # define the regression tasks
    # the outcome regression
    task_outcome <- make_sl3_Task(
     data = data,
@@ -86,28 +86,60 @@ estimate_causal_es <- function(data) {
     # conserve the original A
     a_original <- data$a
 
+    # Create counterfactual datasets
+    data_1 <- data
+    data_1$a <- 1
+    data_0 <- data  
+    data_0$a <- 0
+    
+    # Create new tasks for counterfactual predictions
+    task_cf_1 <- make_sl3_Task(
+      data = data_1,
+      outcome = "y",
+      covariates = c("w1", "w2", "a")
+    )
+    
+    task_cf_1_sq <- make_sl3_Task(
+      data = data_1,
+      outcome = "y_sq",
+      covariates = c("w1", "w2", "a")
+    )
+    
+    task_cf_0 <- make_sl3_Task(
+      data = data_0,
+      outcome = "y", 
+      covariates = c("w1", "w2", "a")
+    )
+    
+    task_cf_0_sq <- make_sl3_Task(
+      data = data_0,
+      outcome = "y_sq",
+      covariates = c("w1", "w2", "a")
+    )
+
     # outcome regression with a = 1
-    data$a <- 1
-    q_1 <- fit_reg$predict(task_outcome)
-    q_1_sq <- fit_regsq$predict(task_outcome)
+    q_1 <- fit_reg$predict(task_cf_1)
+    q_1_sq <- fit_regsq$predict(task_cf_1_sq)
 
     # outcome regression with a = 0
-    data$a <- 0
-    q_0 <- fit_reg$predict(task_outcome)
-    q_0_sq <- fit_regsq$predict(task_outcome)
+    q_0 <- fit_reg$predict(task_cf_0)
+    q_0_sq <- fit_regsq$predict(task_cf_0_sq)
+    
+    # Restore original data for influence curve calculations
+    data$a <- a_original
 
     # cauculate the plug-in estimate
     v_y_1 <- mean(q_1_sq) - mean(q_1)^2
     v_y_0 <- mean(q_0_sq) - mean(q_0)^2
-    g_1 <- sum(data$a) / nrow(data)
+    g_1 <- sum(a_original) / nrow(data)
     g_0 <- 1 - g_1
     es_plugin <- (mean(q_1) - mean(q_0)) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
     
     # estimate the influence curve
     d_1_0 <- (a_original == 0) / (1 - ps) * (data$y - q_0) + q_0 - mean(q_0)
     d_1_1 <- (a_original == 1) / ps * (data$y - q_1) + q_1 - mean(q_1)
-    d_2_0 <- (a_original == 0) / (1 - ps) * (data$y - q_0_sq) + q_0_sq - mean(q_0_sq)
-    d_2_1 <- (a_original == 1) / ps * (data$y - q_1_sq) + q_1_sq - mean(q_1_sq)
+    d_2_0 <- (a_original == 0) / (1 - ps) * (data$y_sq - q_0_sq) + q_0_sq - mean(q_0_sq)
+    d_2_1 <- (a_original == 1) / ps * (data$y_sq - q_1_sq) + q_1_sq - mean(q_1_sq)
     d_g_0 <- (a_original == 0) - g_0
 
     # calculate the correction term
