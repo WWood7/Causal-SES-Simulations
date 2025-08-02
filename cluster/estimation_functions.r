@@ -1,4 +1,5 @@
-library(sl3)
+surpressWarnings(library(sl3))
+library(MBESS)
 
 # define a function to estimate the regular cohen's d
 estimate_cohens_d <- function(data) {
@@ -12,17 +13,12 @@ estimate_cohens_d <- function(data) {
     (nrow(data) - 2)
     cohens_d <- (e_y_1 - e_y_0) / sqrt(pooled_v)
 
-    # calculate the confidence interval manually
-    n1 <- sum(data$a == 1)
-    n2 <- sum(data$a == 0)
-    n <- n1 + n2
-    
-    # Standard error for Cohen's d
-    se_d <- sqrt(((n1 + n2) / (n1 * n2)) + (cohens_d^2 / (2 * (n1 + n2 - 2))))
-    
-    # 95% confidence interval
-    cohens_d_lb <- cohens_d - 1.96 * se_d
-    cohens_d_ub <- cohens_d + 1.96 * se_d
+    # calculate the confidence interval
+    ci_result <- ci.smd(
+        smd = cohens_d, n.1 = sum(data$a == 1), n.2 = sum(data$a == 0)
+        )
+    cohens_d_lb <- ci_result$Lower.Conf.Limit.smd
+    cohens_d_ub <- ci_result$Upper.Conf.Limit.smd
 
     return(data.frame(
         cohens_d = cohens_d,
