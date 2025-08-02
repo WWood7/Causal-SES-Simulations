@@ -1,12 +1,12 @@
 #!/bin/bash
 # Causal Effect Size Simulation Script
-# Usage: chmod u+x run_simulation.sh
-# ./run_simulation.sh cohensd.r causal_es_sim
+# Usage: chmod u+x run_simulation_rct.sh
+# ./run_simulation_rct.sh cohensd_rct.r es_rct
 
 analysis=$2      # change for every analysis you run (2nd arg)
 maildom='@emory.edu'   # your email domain (for receiving error messages)
-myscratch="/home/wwu227/CSES_results/scratch"  # location of your persistent scratch dir
-resultdir="/home/wwu227/CSES_results/scratch/out"  # This is a folder in permanent storage
+myscratch="/home/wwu227/CSES_results/scratch_rct"  # location of your persistent scratch dir
+resultdir="/home/wwu227/CSES_results/scratch_rct/out"  # This is a folder in permanent storage
 script=$1      # your code as (R or Python) script (1st arg)
 max_jobs=200  # max number of jobs per loop
 loops=12   # total number of loops (200 seeds * 4 sample sizes * 3 variability types = 2400 total jobs, so 12 loops of 200)

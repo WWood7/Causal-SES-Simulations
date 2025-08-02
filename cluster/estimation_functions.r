@@ -1,4 +1,4 @@
-surpressWarnings(library(sl3))
+library(sl3)
 library(MBESS)
 
 # define a function to estimate the regular cohen's d

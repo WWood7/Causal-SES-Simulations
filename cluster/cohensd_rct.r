@@ -29,7 +29,7 @@ variability_type <- as.numeric(params[task_id, "variability_type"])
 set.seed(seed)
 
 # Generate data
-data <- generate_data(n, variability_type)
+data <- generate_data_rct(n, variability_type)
 
 # get the true effect size
 true_es <- c(0.528, 1.626, 1.752)[variability_type]
@@ -56,7 +56,7 @@ results <- data.frame(
 )
 
 # Create results directory if it doesn't exist
-results_dir <- "/home/wwu227/CSES_results/results"
+results_dir <- "/home/wwu227/CSES_results/results_rct"
 if (!dir.exists(results_dir)) {
     dir.create(results_dir, recursive = TRUE)
 }
