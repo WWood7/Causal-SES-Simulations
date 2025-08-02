@@ -32,7 +32,7 @@ set.seed(seed)
 data <- generate_data_rct(n, variability_type)
 
 # get the true effect size
-true_es <- c(0.528, 1.626, 1.752)[variability_type]
+true_es <- c(0.554, 1.691, 1.865)[variability_type]
 
 # Estimate Cohen's d
 cohens_d_results <- estimate_cohens_d(data)
