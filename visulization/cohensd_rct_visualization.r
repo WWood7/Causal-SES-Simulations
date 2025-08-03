@@ -68,6 +68,7 @@ summary_stats <- all_results %>%
     cohens_d_bias = mean(cohens_d - true_es, na.rm = TRUE),
     cohens_d_mse = mean((cohens_d - true_es)^2, na.rm = TRUE),
     cohens_d_coverage = mean(cohens_d_lb <= true_es & true_es <= cohens_d_ub, na.rm = TRUE),
+    cohens_d_ci_width = mean(cohens_d_ub - cohens_d_lb, na.rm = TRUE),
     
     # Plugin causal ES statistics
     es_plugin_mean = mean(es_plugin, na.rm = TRUE),
@@ -79,6 +80,7 @@ summary_stats <- all_results %>%
     es_one_step_bias = mean(es_one_step - true_es, na.rm = TRUE),
     es_one_step_mse = mean((es_one_step - true_es)^2, na.rm = TRUE),
     es_one_step_coverage = mean(es_one_step_lb <= true_es & true_es <= es_one_step_ub, na.rm = TRUE),
+    es_one_step_ci_width = mean(es_one_step_ub - es_one_step_lb, na.rm = TRUE),
     
     .groups = "drop"
   )
@@ -201,13 +203,34 @@ p3 <- ggplot(coverage_data, aes(x = n_factor, y = coverage, color = estimator, g
   my_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+# Plot 4: Confidence Interval Width Comparison
+ci_width_data <- summary_stats %>%
+  select(n_factor, vtype_factor, cohens_d_ci_width, es_one_step_ci_width) %>%
+  pivot_longer(cols = c(cohens_d_ci_width, es_one_step_ci_width),
+               names_to = "estimator", values_to = "ci_width") %>%
+  mutate(estimator = factor(estimator,
+                           levels = c("cohens_d_ci_width", "es_one_step_ci_width"),
+                           labels = c("Cohen's d", "One-step Causal ES")))
+
+p4 <- ggplot(ci_width_data, aes(x = n_factor, y = ci_width, color = estimator, group = estimator)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 2) +
+  facet_wrap(~ vtype_factor, ncol = 3, scales = "free_y") +
+  scale_color_viridis_d(name = "Estimator") +
+  labs(title = "RCT: 95% Confidence Interval Width",
+       subtitle = "Narrower intervals indicate higher precision",
+       x = "Sample Size", 
+       y = "CI Width") +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 # =============================================================================
 # 6. SAVE DASHBOARD
 # =============================================================================
 
 # Create and save summary dashboard
-dashboard <- grid.arrange(p1, p2, p3, ncol = 1)
-ggsave(paste0(save_dir, "/simulation_dashboard_rct.png"), dashboard, width = 12, height = 18, dpi = 300)
+dashboard <- grid.arrange(p1, p2, p3, p4, ncol = 1)
+ggsave(paste0(save_dir, "/simulation_dashboard_rct.png"), dashboard, width = 12, height = 24, dpi = 300)
 
 # =============================================================================
 # 7. NUMERICAL SUMMARY TABLE
@@ -216,9 +239,10 @@ ggsave(paste0(save_dir, "/simulation_dashboard_rct.png"), dashboard, width = 12,
 # Create a nice summary table for reporting
 final_summary <- summary_stats %>%
   select(n, vtype_factor, true_es_mean, 
-         cohens_d_bias, cohens_d_mse, cohens_d_coverage,
-         es_one_step_bias, es_one_step_mse, es_one_step_coverage) %>%
-  mutate(across(c(true_es_mean, cohens_d_bias, cohens_d_mse, es_one_step_bias, es_one_step_mse), 
+         cohens_d_bias, cohens_d_mse, cohens_d_coverage, cohens_d_ci_width,
+         es_one_step_bias, es_one_step_mse, es_one_step_coverage, es_one_step_ci_width) %>%
+  mutate(across(c(true_es_mean, cohens_d_bias, cohens_d_mse, es_one_step_bias, es_one_step_mse, 
+                  cohens_d_ci_width, es_one_step_ci_width), 
                 ~ round(.x, 4)),
          across(c(cohens_d_coverage, es_one_step_coverage), 
                 ~ round(.x, 3))) %>%
