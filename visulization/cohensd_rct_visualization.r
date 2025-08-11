@@ -39,15 +39,15 @@ for (file in rds_files) {
 cat("Combined", nrow(all_results), "simulation results\n")
 
 # Sort and clean data
-all_results <- all_results[order(all_results$seed, all_results$n, all_results$variability_type), ]
+all_results <- all_results[order(all_results$seed, all_results$n, all_results$effect_size_type), ]
 
 # Add factor labels for better plotting
 all_results$n_factor <- factor(all_results$n, levels = c(100, 500, 1000, 2000),
                               labels = c("n=100", "n=500", "n=1000", "n=2000"))
 
-all_results$vtype_factor <- factor(all_results$variability_type, 
+all_results$vtype_factor <- factor(all_results$effect_size_type, 
                                   levels = c(1, 2, 3),
-                                  labels = c("Small Var", "Medium Var", "Large Var"))
+                                  labels = c("Small ES", "Medium ES", "Large ES"))
 
 # =============================================================================
 # 2. SUMMARY STATISTICS
@@ -57,7 +57,7 @@ cat("\n=== RCT SUMMARY STATISTICS ===\n")
 
 # Calculate bias, MSE, and coverage for each estimator
 summary_stats <- all_results %>%
-  group_by(n, variability_type, vtype_factor, n_factor) %>%
+  group_by(n, effect_size_type, vtype_factor, n_factor) %>%
   summarise(
     # Sample info
     n_sims = n(),
@@ -103,7 +103,7 @@ bias_data <- all_results %>%
     es_plugin_bias = es_plugin - true_es,
     es_one_step_bias = es_one_step - true_es
   ) %>%
-  select(seed, n, variability_type, n_factor, vtype_factor, true_es,
+  select(seed, n, effect_size_type, n_factor, vtype_factor, true_es,
          cohens_d_bias, es_plugin_bias, es_one_step_bias) %>%
   pivot_longer(cols = c(cohens_d_bias, es_plugin_bias, es_one_step_bias),
                names_to = "estimator", values_to = "bias") %>%
@@ -113,7 +113,7 @@ bias_data <- all_results %>%
 
 # Create long format for estimates comparison
 estimates_data <- all_results %>%
-  select(seed, n, variability_type, n_factor, vtype_factor, true_es,
+  select(seed, n, effect_size_type, n_factor, vtype_factor, true_es,
          cohens_d, es_plugin, es_one_step) %>%
   pivot_longer(cols = c(cohens_d, es_plugin, es_one_step),
                names_to = "estimator", values_to = "estimate") %>%
