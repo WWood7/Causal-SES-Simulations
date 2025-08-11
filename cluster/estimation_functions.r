@@ -31,13 +31,13 @@ estimate_cohens_d <- function(data) {
 # use superlearners to estimate the nuisance parameters
 estimate_causal_es <- function(data) {
    # define individual learners
-   lrnr_hal <- Lrnr_hal9001$new()
+   lrnr_rf <- Lrnr_ranger$new()
    lrnr_glm <- Lrnr_glm$new()
    lrnr_gam <- Lrnr_gam$new()
    lrnr_xgb <- Lrnr_xgboost$new()
 
    # stack the learners
-   stack <- Stack$new(lrnr_hal, lrnr_glm, lrnr_gam, lrnr_xgb)
+  stack <- Stack$new(lrnr_rf, lrnr_glm, lrnr_gam, lrnr_xgb)
 
    # make a sl for the propensity score
    sl_ps <- Lrnr_sl$new(
