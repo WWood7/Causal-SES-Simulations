@@ -3,7 +3,7 @@ source("data_generation.r")
 source("estimation_functions.r")
 
 # Define a grid of parameters for the simulation
-params <- expand.grid(seed = 1:200,
+params <- expand.grid(seed = 1:500,
                      n = c(100, 500, 1000, 2000),
                      effect_size_type = c(1, 2, 3))
 
@@ -17,7 +17,7 @@ args <- commandArgs(trailingOnly = TRUE)
 nloop <- as.numeric(args[1])
 
 # Calculate task id
-max_jobs <- 200  # Must match max_jobs in run_simulation.sh
+max_jobs <- 500  # Must match max_jobs in run_simulation.sh
 task_id <- max_jobs * (nloop-1) + iter
 
 # Extract parameters for this job
