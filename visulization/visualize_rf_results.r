@@ -76,7 +76,7 @@ write.csv(summary_ndm, file.path(output_dir, "summary_bias_by_n_mtry_depth.csv")
 p_box_bias <- ggplot(rf, aes(x = depth_factor, y = bias, fill = mtry_factor)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
     geom_boxplot(outlier.alpha = 0.2) +
-    facet_wrap(~ n_factor, scales = "free_y") +
+    facet_wrap(~ n_factor) +
     labs(x = "max_depth", y = "Bias (estimate - true)", fill = "mtry",
          title = "RF hyperparameters: bias by depth and mtry across seeds",
          subtitle = "Faceted by sample size n") +

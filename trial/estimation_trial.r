@@ -21,7 +21,7 @@ estimate_causal_es <- function(data) {
 
   # now define a grid of hyperparameters for the random forest learners
   mtry_grid <- c(1, 2)
-  depth_grid <- c(2, 5, 10, 20, 50)
+  depth_grid <- c(1, 2, 5, 10, 20)
   grid <- expand.grid(mtry = mtry_grid, depth = depth_grid)
 
   # initialize a list to store the results
@@ -31,7 +31,7 @@ estimate_causal_es <- function(data) {
   for (i in 1:nrow(grid)) {
     mtry <- grid$mtry[i]
     depth <- grid$depth[i]
-    lrnr_rf <- Lrnr_ranger$new(mtry = mtry, max_depth = depth)
+    lrnr_rf <- Lrnr_ranger$new(mtry = mtry, max.depth = depth)
     fit_reg <- lrnr_rf$train(task_outcome)
     fit_regsq <- lrnr_rf$train(task_outcomesq)
 
