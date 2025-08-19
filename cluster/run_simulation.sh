@@ -9,7 +9,7 @@ myscratch="/home/wwu227/CSES_results/scratch"  # location of your persistent scr
 resultdir="/home/wwu227/CSES_results/scratch/out"  # This is a folder in permanent storage
 script=$1      # your code as (R or Python) script (1st arg)
 max_jobs=500  # max number of jobs per loop
-loops=12   # total number of loops (200 seeds * 4 sample sizes * 3 variability types = 2400 total jobs, so 12 loops of 200)
+loops=15   # total number of loops (500 seeds * 5 sample sizes * 3 variability types = 7500 total jobs, so 15 loops of 500)
 
 
 username=$(id -nu)

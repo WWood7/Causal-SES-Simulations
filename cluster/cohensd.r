@@ -4,7 +4,7 @@ source("estimation_functions.r")
 
 # Define a grid of parameters for the simulation
 params <- expand.grid(seed = 1:500,
-                     n = c(100, 500, 1000, 2000),
+                     n = c(100, 500, 1000, 2000, 5000),
                      effect_size_type = c(1, 2, 3))
 
 # Import environment parameters

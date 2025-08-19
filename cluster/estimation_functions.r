@@ -31,7 +31,7 @@ estimate_cohens_d <- function(data) {
 # use superlearners to estimate the nuisance parameters
 estimate_causal_es <- function(data) {
    # define individual learners
-   lrnr_rf <- Lrnr_ranger$new(num.trees = 1000)
+   lrnr_rf <- Lrnr_ranger$new()
    lrnr_glm <- Lrnr_glm$new()
    lrnr_gam <- Lrnr_gam$new()
    lrnr_xgb <- Lrnr_xgboost$new()
@@ -89,7 +89,7 @@ estimate_causal_es <- function(data) {
     # Create counterfactual datasets
     data_1 <- data
     data_1$a <- 1
-    data_0 <- data  
+    data_0 <- data
     data_0$a <- 0
     
     # Create new tasks for counterfactual predictions
@@ -107,7 +107,7 @@ estimate_causal_es <- function(data) {
     
     task_cf_0 <- make_sl3_Task(
       data = data_0,
-      outcome = "y", 
+      outcome = "y",
       covariates = c("w1", "w2", "a")
     )
     

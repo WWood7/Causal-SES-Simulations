@@ -1,15 +1,17 @@
 #!/bin/bash
 # Causal Effect Size Simulation Script
 # Usage: chmod u+x run_simulation_rct.sh
-# ./run_simulation_rct.sh cohensd_rct.r es_rct
+# ./run_simulation_rct.sh trial_rct.r es_rct
 
 analysis=$2      # change for every analysis you run (2nd arg)
 maildom='@emory.edu'   # your email domain (for receiving error messages)
 myscratch="/home/wwu227/CSES_results/scratch_rct"  # location of your persistent scratch dir
 resultdir="/home/wwu227/CSES_results/scratch_rct/out"  # This is a folder in permanent storage
 script=$1      # your code as (R or Python) script (1st arg)
+workdir=$(dirname "$script")
+script_base=$(basename "$script")
 max_jobs=500  # max number of jobs per loop
-loops=15   # total number of loops (500 seeds * 5 sample sizes * 3 variability types = 7500 total jobs, so 15 loops of 500)
+loops=5   # total loops so 5 * 500 = 2500 tasks (500 seeds * 5 sample sizes * 1 effect type)
 
 
 username=$(id -nu)
@@ -58,7 +60,7 @@ echo "#SBATCH --time=00:10:00" >> ${analysis}_complete.sh
 echo "" >> ${analysis}_complete.sh
 echo "echo 'Simulation ${analysis} completed at \$(date)'" >> ${analysis}_complete.sh
 echo "echo 'Total jobs submitted: ${loops} batches x ${max_jobs} tasks = $((loops * max_jobs)) tasks'" >> ${analysis}_complete.sh
-echo "echo 'Check results in: \$(pwd)/results/'" >> ${analysis}_complete.sh
+echo "echo 'Check results in: /home/wwu227/trial_results/results_rct'" >> ${analysis}_complete.sh
 
 # Submit the notification job
 notification_output=$(sbatch ${analysis}_complete.sh)
