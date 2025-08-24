@@ -17,6 +17,9 @@ generate_data <- function(n, effect_size_type) {
     } else if (effect_size_type == 3) {
     sd_y <- 0.39 - 0.21 * a +
       (0.03 + 0.4 * a) * w1^2 + (0.12 + 0.4 * a) * w2
+  } else if (effect_size_type == 4) {
+    sd_y <- 0.39 - 0.21 * a +
+      (0.03 + 0.03 * a) * w1^2 + (0.12 + 0.08 * a) * w2
   }
     y <- rnorm(n, 1.3 * w2 - 0.5 * log(w1^2) + 2 * a + 3.5 * a * w2, sd_y)
     y_sq <- y^2
@@ -36,6 +39,9 @@ generate_data_rct <- function(n, effect_size_type) {
     } else if (effect_size_type == 3) {
     sd_y <- 0.39 - 0.21 * a +
       (0.03 + 0.4 * a) * w1^2 + (0.12 + 0.4 * a) * w2
+  } else if (effect_size_type == 4) {
+    sd_y <- 0.39 - 0.21 * a +
+      (0.03 + 0.03 * a) * w1^2 + (0.12 + 0.08 * a) * w2
   }
     y <- rnorm(n, 1.3 * w2 - 0.5 * log(w1^2) + 2 * a + 3.5 * a * w2, sd_y)
     y_sq <- y^2

@@ -31,7 +31,7 @@ estimate_cohens_d <- function(data) {
 # use superlearners to estimate the nuisance parameters
 estimate_causal_es <- function(data) {
    # define individual learners
-   lrnr_rf <- Lrnr_ranger$new()
+   lrnr_rf <- Lrnr_ranger$new(mtry = 2)
    lrnr_glm <- Lrnr_glm$new()
    lrnr_gam <- Lrnr_gam$new()
    lrnr_xgb <- Lrnr_xgboost$new()
@@ -166,4 +166,8 @@ estimate_causal_es <- function(data) {
         es_one_step_lb = es_one_step_lb,
         es_one_step_ub = es_one_step_ub
     ))
+}
+
+estimate_resi <- function(data){
+  
 }

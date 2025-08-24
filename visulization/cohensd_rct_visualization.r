@@ -42,12 +42,13 @@ cat("Combined", nrow(all_results), "simulation results\n")
 all_results <- all_results[order(all_results$seed, all_results$n, all_results$effect_size_type), ]
 
 # Add factor labels for better plotting
-all_results$n_factor <- factor(all_results$n, levels = c(100, 500, 1000, 2000),
-                              labels = c("n=100", "n=500", "n=1000", "n=2000"))
+n_levels <- sort(unique(all_results$n))
+all_results$n_factor <- factor(all_results$n, levels = n_levels,
+                              labels = paste0("n=", n_levels))
 
 all_results$vtype_factor <- factor(all_results$effect_size_type, 
-                                  levels = c(1, 2, 3),
-                                  labels = c("Small ES", "Medium ES", "Large ES"))
+                                  levels = c(1, 2, 3, 4),
+                                  labels = c("Small ES", "Medium ES", "Large ES", "Super Large ES"))
 
 # =============================================================================
 # 2. SUMMARY STATISTICS

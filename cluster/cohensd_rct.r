@@ -4,8 +4,8 @@ source("estimation_functions.r")
 
 # Define a grid of parameters for the simulation
 params <- expand.grid(seed = 1:500,
-                     n = c(100, 500, 1000, 2000, 5000),
-                     effect_size_type = c(1, 2, 3))
+                     n = c(100, 500, 1000, 2000),
+                     effect_size_type = c(1, 2, 3, 4))
 
 # Import environment parameters
 # Get iter from SLURM array
@@ -32,7 +32,7 @@ set.seed(seed)
 data <- generate_data_rct(n, effect_size_type)
 
 # get the true effect size
-true_es <- c(0.209, 0.557, 0.876)[effect_size_type]
+true_es <- c(0.209, 0.557, 0.876, 1.87)[effect_size_type]
 
 # Estimate Cohen's d
 cohens_d_results <- estimate_cohens_d(data)
