@@ -18,7 +18,7 @@ nloop <- as.numeric(args[1])
 
 # Calculate task id
 max_jobs <- 500  # Must match max_jobs in run_simulation.sh
-task_id <- max_jobs * (nloop-1) + iter
+task_id <- max_jobs * (nloop - 1) + iter
 
 # Extract parameters for this job
 seed <- as.numeric(params[task_id, "seed"])
@@ -29,19 +29,19 @@ effect_size_type <- as.numeric(params[task_id, "effect_size_type"])
 set.seed(seed)
 
 # Generate data
-data <- generate_data(n, effect_size_type)
+data <- generate_data_rct_pi(n, effect_size_type)
 
 # get the true effect size
-true_es <- c(0.191, 0.527, 0.804, 1.752)[effect_size_type]
+true_es <- c(0.268, 0.626, 1.101, 2.201)[effect_size_type]
 
 # Estimate Cohen's d
 cohens_d_results <- estimate_cohens_d(data)
 
-# Estimate robust Cohen's d
-robust_cohens_d_results <- estimate_robust_cohens_d(data)
-
 # Estimate causal effect size
 causal_es_results <- estimate_causal_es(data)
+
+# Estimate robust cohen's d results
+robust_cohens_d_results <- estimate_robust_cohens_d(data)
 
 # Combine all results
 results <- data.frame(
@@ -62,7 +62,7 @@ results <- data.frame(
 )
 
 # Create results directory if it doesn't exist
-results_dir <- "/home/wwu227/CSES_results/results"
+results_dir <- "/home/wwu227/CSES_results/results_rct_pi"
 if (!dir.exists(results_dir)) {
     dir.create(results_dir, recursive = TRUE)
 }

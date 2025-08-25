@@ -69,6 +69,14 @@ summary_stats <- all_results %>%
     cohens_d_bias = mean(cohens_d - true_es, na.rm = TRUE),
     cohens_d_mse = mean((cohens_d - true_es)^2, na.rm = TRUE),
     cohens_d_coverage = mean(cohens_d_lb <= true_es & true_es <= cohens_d_ub, na.rm = TRUE),
+    cohens_d_ci_width = mean(cohens_d_ub - cohens_d_lb, na.rm = TRUE),
+
+    # Robust Cohen's d statistics
+    robust_cohens_d_mean = mean(robust_cohens_d, na.rm = TRUE),
+    robust_cohens_d_bias = mean(robust_cohens_d - true_es, na.rm = TRUE),
+    robust_cohens_d_mse = mean((robust_cohens_d - true_es)^2, na.rm = TRUE),
+    robust_cohens_d_coverage = mean(robust_cohens_d_lb <= true_es & true_es <= robust_cohens_d_ub, na.rm = TRUE),
+    robust_cohens_d_ci_width = mean(robust_cohens_d_ub - robust_cohens_d_lb, na.rm = TRUE),
     
     # Plugin causal ES statistics
     es_plugin_mean = mean(es_plugin, na.rm = TRUE),
@@ -80,6 +88,7 @@ summary_stats <- all_results %>%
     es_one_step_bias = mean(es_one_step - true_es, na.rm = TRUE),
     es_one_step_mse = mean((es_one_step - true_es)^2, na.rm = TRUE),
     es_one_step_coverage = mean(es_one_step_lb <= true_es & true_es <= es_one_step_ub, na.rm = TRUE),
+    es_one_step_ci_width = mean(es_one_step_ub - es_one_step_lb, na.rm = TRUE),
     
     .groups = "drop"
   )
@@ -99,26 +108,27 @@ cat("Summary statistics saved to: simulation_summary_statistics.csv\n")
 bias_data <- all_results %>%
   mutate(
     cohens_d_bias = cohens_d - true_es,
+    robust_cohens_d_bias = robust_cohens_d - true_es,
     es_plugin_bias = es_plugin - true_es,
     es_one_step_bias = es_one_step - true_es
   ) %>%
   select(seed, n, effect_size_type, n_factor, vtype_factor, true_es,
-         cohens_d_bias, es_plugin_bias, es_one_step_bias) %>%
-  pivot_longer(cols = c(cohens_d_bias, es_plugin_bias, es_one_step_bias),
+         cohens_d_bias, robust_cohens_d_bias, es_plugin_bias, es_one_step_bias) %>%
+  pivot_longer(cols = c(cohens_d_bias, robust_cohens_d_bias, es_plugin_bias, es_one_step_bias),
                names_to = "estimator", values_to = "bias") %>%
   mutate(estimator = factor(estimator, 
-                           levels = c("cohens_d_bias", "es_plugin_bias", "es_one_step_bias"),
-                           labels = c("Cohen's d", "Plugin Causal ES", "One-step Causal ES")))
+                           levels = c("cohens_d_bias", "robust_cohens_d_bias", "es_plugin_bias", "es_one_step_bias"),
+                           labels = c("Cohen's d", "Robust Cohen's d", "Plugin Causal ES", "One-step Causal ES")))
 
 # Create long format for estimates comparison
 estimates_data <- all_results %>%
   select(seed, n, effect_size_type, n_factor, vtype_factor, true_es,
-         cohens_d, es_plugin, es_one_step) %>%
-  pivot_longer(cols = c(cohens_d, es_plugin, es_one_step),
+         cohens_d, robust_cohens_d, es_plugin, es_one_step) %>%
+  pivot_longer(cols = c(cohens_d, robust_cohens_d, es_plugin, es_one_step),
                names_to = "estimator", values_to = "estimate") %>%
   mutate(estimator = factor(estimator,
-                           levels = c("cohens_d", "es_plugin", "es_one_step"),
-                           labels = c("Cohen's d", "Plugin Causal ES", "One-step Causal ES")))
+                           levels = c("cohens_d", "robust_cohens_d", "es_plugin", "es_one_step"),
+                           labels = c("Cohen's d", "Robust Cohen's d", "Plugin Causal ES", "One-step Causal ES")))
 
 # =============================================================================
 # 4. VISUALIZATION FUNCTIONS
@@ -154,12 +164,12 @@ p1 <- ggplot(bias_data, aes(x = n_factor, y = bias, fill = estimator)) +
 
 # Plot 2: MSE Comparison (from summary stats)
 mse_data <- summary_stats %>%
-  select(n_factor, vtype_factor, cohens_d_mse, es_plugin_mse, es_one_step_mse) %>%
-  pivot_longer(cols = c(cohens_d_mse, es_plugin_mse, es_one_step_mse),
+  select(n_factor, vtype_factor, cohens_d_mse, robust_cohens_d_mse, es_plugin_mse, es_one_step_mse) %>%
+  pivot_longer(cols = c(cohens_d_mse, robust_cohens_d_mse, es_plugin_mse, es_one_step_mse),
                names_to = "estimator", values_to = "mse") %>%
   mutate(estimator = factor(estimator,
-                           levels = c("cohens_d_mse", "es_plugin_mse", "es_one_step_mse"),
-                           labels = c("Cohen's d", "Plugin Causal ES", "One-step Causal ES")))
+                           levels = c("cohens_d_mse", "robust_cohens_d_mse", "es_plugin_mse", "es_one_step_mse"),
+                           labels = c("Cohen's d", "Robust Cohen's d", "Plugin Causal ES", "One-step Causal ES")))
 
 p2 <- ggplot(mse_data, aes(x = n_factor, y = mse, color = estimator, group = estimator)) +
   geom_line(linewidth = 1, alpha = 0.8) +
@@ -175,12 +185,12 @@ p2 <- ggplot(mse_data, aes(x = n_factor, y = mse, color = estimator, group = est
 
 # Plot 3: Coverage Probability
 coverage_data <- summary_stats %>%
-  select(n_factor, vtype_factor, cohens_d_coverage, es_one_step_coverage) %>%
-  pivot_longer(cols = c(cohens_d_coverage, es_one_step_coverage),
+  select(n_factor, vtype_factor, cohens_d_coverage, robust_cohens_d_coverage, es_one_step_coverage) %>%
+  pivot_longer(cols = c(cohens_d_coverage, robust_cohens_d_coverage, es_one_step_coverage),
                names_to = "estimator", values_to = "coverage") %>%
   mutate(estimator = factor(estimator,
-                           levels = c("cohens_d_coverage", "es_one_step_coverage"),
-                           labels = c("Cohen's d", "One-step Causal ES")))
+                           levels = c("cohens_d_coverage", "robust_cohens_d_coverage", "es_one_step_coverage"),
+                           labels = c("Cohen's d", "Robust Cohen's d", "One-step Causal ES")))
 
 # Calculate dynamic y-axis limits based on actual coverage values
 min_coverage <- min(coverage_data$coverage, na.rm = TRUE)
@@ -202,13 +212,34 @@ p3 <- ggplot(coverage_data, aes(x = n_factor, y = coverage, color = estimator, g
   my_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
+# Plot 4: Confidence Interval Width Comparison
+ci_width_data <- summary_stats %>%
+  select(n_factor, vtype_factor, cohens_d_ci_width, robust_cohens_d_ci_width, es_one_step_ci_width) %>%
+  pivot_longer(cols = c(cohens_d_ci_width, robust_cohens_d_ci_width, es_one_step_ci_width),
+               names_to = "estimator", values_to = "ci_width") %>%
+  mutate(estimator = factor(estimator,
+                           levels = c("cohens_d_ci_width", "robust_cohens_d_ci_width", "es_one_step_ci_width"),
+                           labels = c("Cohen's d", "Robust Cohen's d", "One-step Causal ES")))
+
+p4 <- ggplot(ci_width_data, aes(x = n_factor, y = ci_width, color = estimator, group = estimator)) +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  geom_point(size = 2) +
+  facet_wrap(~ vtype_factor, ncol = 3, scales = "free_y") +
+  scale_color_viridis_d(name = "Estimator") +
+  labs(title = "95% Confidence Interval Width",
+       subtitle = "Narrower intervals indicate higher precision",
+       x = "Sample Size", 
+       y = "CI Width") +
+  my_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 # =============================================================================
 # 6. SAVE DASHBOARD
 # =============================================================================
 
 # Create and save summary dashboard
-dashboard <- grid.arrange(p1, p2, p3, ncol = 1)
-ggsave(paste0(save_dir, "/simulation_dashboard.png"), dashboard, width = 12, height = 18, dpi = 300)
+dashboard <- grid.arrange(p1, p2, p3, p4, ncol = 1)
+ggsave(paste0(save_dir, "/simulation_dashboard.png"), dashboard, width = 12, height = 24, dpi = 300)
 
 # =============================================================================
 # 7. NUMERICAL SUMMARY TABLE
@@ -217,11 +248,13 @@ ggsave(paste0(save_dir, "/simulation_dashboard.png"), dashboard, width = 12, hei
 # Create a nice summary table for reporting
 final_summary <- summary_stats %>%
   select(n, vtype_factor, true_es_mean, 
-         cohens_d_bias, cohens_d_mse, cohens_d_coverage,
-         es_one_step_bias, es_one_step_mse, es_one_step_coverage) %>%
-  mutate(across(c(true_es_mean, cohens_d_bias, cohens_d_mse, es_one_step_bias, es_one_step_mse), 
+         cohens_d_bias, cohens_d_mse, cohens_d_coverage, cohens_d_ci_width,
+         robust_cohens_d_bias, robust_cohens_d_mse, robust_cohens_d_coverage, robust_cohens_d_ci_width,
+         es_one_step_bias, es_one_step_mse, es_one_step_coverage, es_one_step_ci_width) %>%
+  mutate(across(c(true_es_mean, cohens_d_bias, cohens_d_mse, robust_cohens_d_bias, robust_cohens_d_mse,
+                  es_one_step_bias, es_one_step_mse, cohens_d_ci_width, robust_cohens_d_ci_width, es_one_step_ci_width), 
                 ~ round(.x, 4)),
-         across(c(cohens_d_coverage, es_one_step_coverage), 
+         across(c(cohens_d_coverage, robust_cohens_d_coverage, es_one_step_coverage), 
                 ~ round(.x, 3))) %>%
   arrange(vtype_factor, n)
 
@@ -240,15 +273,19 @@ cat("\n=== KEY FINDINGS ===\n")
 overall_bias <- all_results %>%
   summarise(
     cohens_d_abs_bias = mean(abs(cohens_d - true_es), na.rm = TRUE),
+    robust_cohens_d_abs_bias = mean(abs(robust_cohens_d - true_es), na.rm = TRUE),
     es_one_step_abs_bias = mean(abs(es_one_step - true_es), na.rm = TRUE),
     cohens_d_coverage = mean(cohens_d_lb <= true_es & true_es <= cohens_d_ub, na.rm = TRUE),
+    robust_cohens_d_coverage = mean(robust_cohens_d_lb <= true_es & true_es <= robust_cohens_d_ub, na.rm = TRUE),
     es_one_step_coverage = mean(es_one_step_lb <= true_es & true_es <= es_one_step_ub, na.rm = TRUE)
   )
 
 cat("Overall Results (across all conditions):\n")
 cat("Cohen's d - Average absolute bias:", round(overall_bias$cohens_d_abs_bias, 4), "\n")
+cat("Robust Cohen's d - Average absolute bias:", round(overall_bias$robust_cohens_d_abs_bias, 4), "\n")
 cat("Causal ES - Average absolute bias:", round(overall_bias$es_one_step_abs_bias, 4), "\n")
 cat("Cohen's d - Coverage probability:", round(overall_bias$cohens_d_coverage, 3), "\n")
+cat("Robust Cohen's d - Coverage probability:", round(overall_bias$robust_cohens_d_coverage, 3), "\n")
 cat("Causal ES - Coverage probability:", round(overall_bias$es_one_step_coverage, 3), "\n")
 
 cat("\nFiles created:\n")

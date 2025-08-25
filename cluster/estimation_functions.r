@@ -1,5 +1,6 @@
 library(sl3)
 library(MBESS)
+library(RESI)
 
 # define a function to estimate the regular cohen's d
 estimate_cohens_d <- function(data) {
@@ -168,6 +169,28 @@ estimate_causal_es <- function(data) {
     ))
 }
 
-estimate_resi <- function(data){
-  
+estimate_robust_cohens_d <- function(data) {
+  # set pi
+  pi <- sum(data$a) / nrow(data)
+  # calculate RESI
+  fit <- lm(y ~ a, data = data)
+  # set number of bootstrap samples
+  n_boot <- max(1000, nrow(data))
+  resi_obj <- anova(resi(fit, n_boot = n_boot))
+
+  # get the results
+  resi <- as.numeric(resi_obj[1, "RESI"])
+  resi_lb <- as.numeric(resi_obj[1, "2.5%"])
+  resi_ub <- as.numeric(resi_obj[1, "97.5%"])
+
+  # calculate the corresponding robust cohen's d
+  robust_cd <- S2d(resi, pi)
+  robust_cd_lb <- S2d(resi_lb, pi)
+  robust_cd_ub <- S2d(resi_ub, pi)
+
+  return(data.frame(
+    robust_cd = robust_cd,
+    robust_cd_lb = robust_cd_lb,
+    robust_cd_ub = robust_cd_ub
+  ))
 }

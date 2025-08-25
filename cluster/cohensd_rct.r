@@ -37,6 +37,9 @@ true_es <- c(0.209, 0.557, 0.876, 1.87)[effect_size_type]
 # Estimate Cohen's d
 cohens_d_results <- estimate_cohens_d(data)
 
+# Estimate robust Cohen's d
+robust_cohens_d_results <- estimate_robust_cohens_d(data)
+
 # Estimate causal effect size
 causal_es_results <- estimate_causal_es(data)
 
@@ -49,6 +52,9 @@ results <- data.frame(
     cohens_d = cohens_d_results$cohens_d,
     cohens_d_lb = cohens_d_results$cohens_d_lb,
     cohens_d_ub = cohens_d_results$cohens_d_ub,
+    robust_cohens_d = robust_cohens_d_results$robust_cd,
+    robust_cohens_d_lb = robust_cohens_d_results$robust_cd_lb,
+    robust_cohens_d_ub = robust_cohens_d_results$robust_cd_ub,
     es_plugin = causal_es_results$es_plugin,
     es_one_step = causal_es_results$es_one_step,
     es_one_step_lb = causal_es_results$es_one_step_lb,
