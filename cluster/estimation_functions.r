@@ -194,3 +194,105 @@ estimate_robust_cohens_d <- function(data) {
     robust_cd_ub = robust_cd_ub
   ))
 }
+
+
+estimate_causal_resi <- function(data) {
+  # define a superlearner
+  lrnr_rf <- Lrnr_ranger$new(mtry = 2)
+  lrnr_glm <- Lrnr_glm$new()
+  lrnr_gam <- Lrnr_gam$new()
+  lrnr_xgb <- Lrnr_xgboost$new()
+
+  # stack the learners
+  stack <- Stack$new(lrnr_rf, lrnr_glm, lrnr_gam, lrnr_xgb)
+
+  # make a sl for the propensity score
+  sl_ps <- Lrnr_sl$new(
+    learners = stack,
+    metalearner = Lrnr_nnls$new(eval_function = loss_loglik_binomial)
+  )
+  
+  # make a sl for the outcome regression
+  sl_reg <- Lrnr_sl$new(
+    learners = stack,
+    metalearner = Lrnr_nnls$new(eval_function = loss_squared_error)
+  )
+
+  # define the task for propensity score estimation
+  task_ps <- make_sl3_Task(
+    data = data,
+    outcome = "a",
+    covariates = c("w1", "w2")
+  )
+
+  # make a sl for the outcome regression
+  task_outcome <- make_sl3_Task(
+    data = data,
+    outcome = "y",
+    covariates = c("w1", "w2", "a")
+  )
+
+  # train the superlearners
+  fit_ps <- sl_ps$train(task_ps)
+  fit_reg <- sl_reg$train(task_outcome)
+
+  # calculate the ATE
+  a_original <- data$a
+  data_1 <- data
+  data_1$a <- 1
+  data_0 <- data
+  data_0$a <- 0
+
+  # create new tasks for counterfactual predictions
+  task_cf_1 <- make_sl3_Task(
+    data = data_1,
+    outcome = "y",
+    covariates = c("w1", "w2", "a")
+  )
+
+  task_cf_0 <- make_sl3_Task(
+    data = data_0,
+    outcome = "y",
+    covariates = c("w1", "w2", "a")
+  )
+
+  # outcome regression with a = 1
+  q_1 <- fit_reg$predict(task_cf_1)
+  # outcome regression with a = 0
+  q_0 <- fit_reg$predict(task_cf_0)
+
+  ate <- mean(q_1) - mean(q_0)
+
+  # calculate the influence curve
+  ps <- fit_ps$predict(task_ps)
+  d_1 <- (a_original == 1) / ps * (data$y - q_1) + q_1 - mean(q_1)
+  d_0 <- (a_original == 0) / (1 - ps) * (data$y - q_0) + q_0 - mean(q_0)
+  ic <- d_1 - d_0
+
+  # calculate the one-step estimate
+  es_one_step <- ate + mean(ic)
+
+  # calculate the causal RESI
+  cs <- sqrt(max(0, es_one_step ^ 2 / var(ic) - 1 / nrow(data)))
+
+  return(cs)
+}
+
+bootstrap_causal_resi <- function(data, n_boot) {
+  for (i in 1:n_boot) {
+    # bootstrap the data
+    data_boot <- data[sample(1 : nrow(data), nrow(data), replace = TRUE), ]
+    # calculate the causal RESI
+    cs <- estimate_causal_resi(data_boot)
+    # store the result
+    resi_boot[i] <- cs
+  }
+  # get the confidence interval
+  cs_lb <- quantile(resi_boot, 0.025)
+  cs_ub <- quantile(resi_boot, 0.975)
+
+  return(data.frame(
+    cs_lb = cs_lb,
+    cs_ub = cs_ub
+  ))
+}

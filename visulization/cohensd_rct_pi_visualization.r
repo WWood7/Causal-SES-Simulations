@@ -12,7 +12,7 @@ save_dir <-
 "/Users/winnwu/Emory_Projects/causal_effect_size/CausalEffectSize/simulation_results/cohens_d_rct_pi_visualization"
 
 # Set results directory for RCT pi (change if you stage files elsewhere)
-results_dir <- "/home/wwu227/CSES_results/results_rct_pi"
+results_dir <- "/Users/winnwu/Emory_Projects/causal_effect_size/CausalEffectSize/simulation_results/cohens_d_rct_pi"
 
 # =============================================================================
 # 1. LOAD AND COMBINE ALL RESULTS
