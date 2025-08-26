@@ -175,7 +175,7 @@ estimate_robust_cohens_d <- function(data) {
   # calculate RESI
   fit <- lm(y ~ a, data = data)
   # set number of bootstrap samples
-  n_boot <- max(1000, nrow(data))
+  n_boot <- 1000
   resi_obj <- anova(resi(fit, n_boot = n_boot))
 
   # get the results
@@ -196,7 +196,7 @@ estimate_robust_cohens_d <- function(data) {
 }
 
 
-estimate_causal_resi <- function(data) {
+cs_estimation <- function(data) {
   # define a superlearner
   lrnr_rf <- Lrnr_ranger$new(mtry = 2)
   lrnr_glm <- Lrnr_glm$new()
@@ -278,14 +278,16 @@ estimate_causal_resi <- function(data) {
   return(cs)
 }
 
-bootstrap_causal_resi <- function(data, n_boot) {
+bootci_cs <- function(data, n_boot) {
+  # create a vector to store the results
+  resi_boot <- NULL
   for (i in 1:n_boot) {
     # bootstrap the data
     data_boot <- data[sample(1 : nrow(data), nrow(data), replace = TRUE), ]
     # calculate the causal RESI
-    cs <- estimate_causal_resi(data_boot)
+    cs <- cs_estimation(data_boot)
     # store the result
-    resi_boot[i] <- cs
+    resi_boot <- c(resi_boot, cs)
   }
   # get the confidence interval
   cs_lb <- quantile(resi_boot, 0.025)
@@ -294,5 +296,50 @@ bootstrap_causal_resi <- function(data, n_boot) {
   return(data.frame(
     cs_lb = cs_lb,
     cs_ub = cs_ub
+  ))
+}
+
+estimate_causal_resi <- function(data) {
+  # set number of bootstrap samples
+  n_boot <- 1000
+  # bootstrap the data
+  cs_ci <- bootci_cs(data, n_boot)
+  # calculate the causal RESI
+  cs <- cs_estimation(data)
+
+  # calculate the nominal nc chi-square confidence interval
+  ncp <- cs ^ 2 * nrow(data)
+
+  chisq_ci <- conf.limits.nc.chisq(ncp, df = 1)
+  chisq_lb <- sqrt(chisq_ci$Lower.Limit / nrow(data))
+  chisq_ub <- sqrt(chisq_ci$Upper.Limit / nrow(data))
+
+  return(data.frame(
+    cs = cs,
+    cs_lb = cs_ci$cs_lb,
+    cs_ub = cs_ci$cs_ub,
+    chisq_lb = chisq_lb,
+    chisq_ub = chisq_ub
+  ))
+}
+
+estimate_resi <- function(data) {
+  # set pi
+  pi <- sum(data$a) / nrow(data)
+  # calculate RESI
+  fit <- lm(y ~ a, data = data)
+  # set number of bootstrap samples
+  n_boot <- 1000
+  resi_obj <- anova(resi(fit, n_boot = n_boot))
+
+  # get the results
+  resi <- as.numeric(resi_obj[1, "RESI"])
+  resi_lb <- as.numeric(resi_obj[1, "2.5%"])
+  resi_ub <- as.numeric(resi_obj[1, "97.5%"])
+
+  return(data.frame(
+    resi = resi,
+    resi_lb = resi_lb,
+    resi_ub = resi_ub
   ))
 }
