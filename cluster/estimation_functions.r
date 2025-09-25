@@ -132,8 +132,8 @@ estimate_causal_es <- function(data) {
     # cauculate the plug-in estimate
     v_y_1 <- mean(q_1_sq) - mean(q_1)^2
     v_y_0 <- mean(q_0_sq) - mean(q_0)^2
-    g_1 <- sum(a_original) / nrow(data)
-    g_0 <- 1 - g_1
+    g_1 <- 0.5
+    g_0 <- 0.5
     es_plugin <- (mean(q_1) - mean(q_0)) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
     
     # estimate the influence curve
@@ -141,7 +141,6 @@ estimate_causal_es <- function(data) {
     d_1_1 <- (a_original == 1) / ps * (data$y - q_1) + q_1 - mean(q_1)
     d_2_0 <- (a_original == 0) / (1 - ps) * (data$y_sq - q_0_sq) + q_0_sq - mean(q_0_sq)
     d_2_1 <- (a_original == 1) / ps * (data$y_sq - q_1_sq) + q_1_sq - mean(q_1_sq)
-    d_g_0 <- (a_original == 0) - g_0
 
     # calculate the correction term
     z <- g_0 * v_y_0 + g_1 * v_y_1
@@ -149,8 +148,7 @@ estimate_causal_es <- function(data) {
     ic_1_0 <- ((-g_0) * (mean(q_0_sq) - mean(q_0) * mean(q_1)) - g_1 * v_y_1) / z ^ (1.5) * d_1_0
     ic_2_1 <- g_1 * (mean(q_1) - mean(q_0)) / z ^ (1.5) * d_2_1 * (-1/2)
     ic_2_0 <- g_0 * (mean(q_1) - mean(q_0)) / z ^ (1.5) * d_2_0 * (-1/2)
-    ic_g_0 <- (mean(q_1) - mean(q_0)) * (v_y_0 - v_y_1) / z ^ (1.5) * d_g_0 * (-1/2)
-    ic <- ic_1_0 + ic_1_1 + ic_2_0 + ic_2_1 + ic_g_0
+    ic <- ic_1_0 + ic_1_1 + ic_2_0 + ic_2_1
 
     # calculate the one-step estimate
     es_one_step <- es_plugin + mean(ic)

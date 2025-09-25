@@ -32,7 +32,7 @@ set.seed(seed)
 data <- generate_data_rct_pi(n, effect_size_type)
 
 # get the true effect size
-true_es <- c(0.268, 0.626, 1.101, 2.201)[effect_size_type]
+true_es <- c(0.209, 0.557, 0.876, 1.868)[effect_size_type]
 
 # Estimate Cohen's d
 cohens_d_results <- estimate_cohens_d(data)

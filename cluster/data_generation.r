@@ -86,7 +86,7 @@ calc_causal_effect_size_medium_effect <- function(data) {
           (1.3 * data$w2 - 0.5 * log(data$w1^2) + 2 * 0 + 3.5 * 0 * data$w2)^2
     v_y_1 <- mean(e_y_1_sq_cond) - e_y_1^2
     v_y_0 <- mean(e_y_0_sq_cond) - e_y_0^2
-    g_1 <- sum(data$a) / nrow(data)
+    g_1 <- 0.5
     g_0 <- 1 - g_1
     es <- (e_y_1 - e_y_0) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
     return(es)
@@ -105,7 +105,7 @@ calc_causal_effect_size_small_effect <- function(data) {
           (1.3 * data$w2 - 0.5 * log(data$w1^2) + 2 * 0 + 3.5 * 0 * data$w2)^2
     v_y_1 <- mean(e_y_1_sq_cond) - e_y_1^2
     v_y_0 <- mean(e_y_0_sq_cond) - e_y_0^2
-    g_1 <- sum(data$a) / nrow(data)
+    g_1 <- 0.5
     g_0 <- 1 - g_1
     es <- (e_y_1 - e_y_0) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
     return(es)
@@ -124,7 +124,7 @@ calc_causal_effect_size_large_effect <- function(data) {
           (1.3 * data$w2 - 0.5 * log(data$w1^2) + 2 * 0 + 3.5 * 0 * data$w2)^2
     v_y_1 <- mean(e_y_1_sq_cond) - e_y_1^2
     v_y_0 <- mean(e_y_0_sq_cond) - e_y_0^2
-    g_1 <- sum(data$a) / nrow(data)
+    g_1 <- 0.5
     g_0 <- 1 - g_1
     es <- (e_y_1 - e_y_0) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
     return(es)
@@ -143,7 +143,7 @@ calc_causal_effect_size_super_large_effect <- function(data) {
           (1.3 * data$w2 - 0.5 * log(data$w1^2) + 2 * 0 + 3.5 * 0 * data$w2)^2
     v_y_1 <- mean(e_y_1_sq_cond) - e_y_1^2
     v_y_0 <- mean(e_y_0_sq_cond) - e_y_0^2
-    g_1 <- sum(data$a) / nrow(data)
+    g_1 <- 0.5
     g_0 <- 1 - g_1
     es <- (e_y_1 - e_y_0) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
     return(es)
