@@ -1,5 +1,6 @@
 library(sl3)
 library(MBESS)
+library(RESI)
 
 # define a function to estimate the regular cohen's d
 estimate_cohens_d <- function(data) {
@@ -27,143 +28,169 @@ estimate_cohens_d <- function(data) {
     ))
 }
 
-# define a function to estimate the corresponding causal ES
-# use superlearners to estimate the nuisance parameters
-estimate_causal_es <- function(data) {
-   # define individual learners
-   lrnr_rf <- Lrnr_ranger$new()
-   lrnr_glm <- Lrnr_glm$new()
-   lrnr_gam <- Lrnr_gam$new()
-   lrnr_xgb <- Lrnr_xgboost$new()
+# Estimate the equal-variance-weighted causal effect size and causal ATE RESI.
+# Nuisance functions are estimated with outer two-fold cross-fitting.
+estimate_ces_and_resi <- function(data, ps_bound = 0.01, conf_level = 0.95) {
+  n <- nrow(data)
+  fold_id <- integer(n)
+  for (treatment in 0:1) {
+    indices <- which(data$a == treatment)
+    fold_id[indices] <- sample(rep(1:2, length.out = length(indices)))
+  }
 
-   # stack the learners
-  stack <- Stack$new(lrnr_rf, lrnr_glm, lrnr_gam, lrnr_xgb)
+  ps <- q_1 <- q_0 <- q_1_sq <- q_0_sq <- rep(NA_real_, n)
 
-   # make a sl for the propensity score
-   sl_ps <- Lrnr_sl$new(
-    learners = stack,
-    metalearner = Lrnr_nnls$new(eval_function = loss_loglik_binomial)
-   )
+  make_stack <- function() {
+    Stack$new(
+      Lrnr_ranger$new(mtry = 2, num.threads = 1),
+      Lrnr_glm$new(),
+      Lrnr_gam$new(),
+      Lrnr_xgboost$new(nthread = 1)
+    )
+  }
 
-   # define the task for propensity score estimation
-   task_ps <- make_sl3_Task(
-    data = data,
-    outcome = "a",
-    covariates = c("w1", "w2")
-   )
-
-   # make a sl for regression taks
-   sl_reg <- Lrnr_sl$new(
-    learners = stack,
-    metalearner = Lrnr_nnls$new(eval_function = loss_squared_error)
-   )
-
-   # define the regression tasks
-   # the outcome regression
-   task_outcome <- make_sl3_Task(
-    data = data,
-    outcome = "y",
-    covariates = c("w1", "w2", "a")
-   )
-
-   # the squared outcome regression
-   task_outcomesq <- make_sl3_Task(
-    data = data,
-    outcome = "y_sq",
-    covariates = c("w1", "w2", "a")
-   )
-
-   # train the superlearners
-   fit_ps <- sl_ps$train(task_ps)
-   fit_reg <- sl_reg$train(task_outcome)
-   fit_regsq <- sl_reg$train(task_outcomesq)
-
-   # get the propensity score for each observation
-   # this is for the influence curve
-   ps <- fit_ps$predict(task_ps)
-
-    # calculate the plug-in estimates
-    # conserve the original A
-    a_original <- data$a
-
-    # Create counterfactual datasets
-    data_1 <- data
-    data_1$a <- 1
-    data_0 <- data  
-    data_0$a <- 0
-    
-    # Create new tasks for counterfactual predictions
-    task_cf_1 <- make_sl3_Task(
-      data = data_1,
-      outcome = "y",
+  make_prediction_task <- function(prediction_data, outcome) {
+    make_sl3_Task(
+      data = prediction_data,
+      outcome = outcome,
       covariates = c("w1", "w2", "a")
     )
-    
-    task_cf_1_sq <- make_sl3_Task(
-      data = data_1,
-      outcome = "y_sq",
-      covariates = c("w1", "w2", "a")
+  }
+
+  for (fold in 1:2) {
+    validation_indices <- which(fold_id == fold)
+    training_data <- data[fold_id != fold, , drop = FALSE]
+    validation_data <- data[validation_indices, , drop = FALSE]
+
+    ps_learner <- Lrnr_sl$new(
+      learners = make_stack(),
+      metalearner = Lrnr_nnls$new(eval_function = loss_loglik_binomial)
     )
-    
-    task_cf_0 <- make_sl3_Task(
-      data = data_0,
-      outcome = "y", 
-      covariates = c("w1", "w2", "a")
+    outcome_learner <- Lrnr_sl$new(
+      learners = make_stack(),
+      metalearner = Lrnr_nnls$new(eval_function = loss_squared_error)
     )
-    
-    task_cf_0_sq <- make_sl3_Task(
-      data = data_0,
-      outcome = "y_sq",
-      covariates = c("w1", "w2", "a")
+    outcome_sq_learner <- Lrnr_sl$new(
+      learners = make_stack(),
+      metalearner = Lrnr_nnls$new(eval_function = loss_squared_error)
     )
 
-    # outcome regression with a = 1
-    q_1 <- fit_reg$predict(task_cf_1)
-    q_1_sq <- fit_regsq$predict(task_cf_1_sq)
+    ps_training_task <- make_sl3_Task(
+      data = training_data,
+      outcome = "a",
+      covariates = c("w1", "w2")
+    )
+    outcome_training_task <- make_prediction_task(training_data, "y")
+    outcome_sq_training_task <- make_prediction_task(training_data, "y_sq")
 
-    # outcome regression with a = 0
-    q_0 <- fit_reg$predict(task_cf_0)
-    q_0_sq <- fit_regsq$predict(task_cf_0_sq)
-    
-    # Restore original data for influence curve calculations
-    data$a <- a_original
+    ps_fit <- ps_learner$train(ps_training_task)
+    outcome_fit <- outcome_learner$train(outcome_training_task)
+    outcome_sq_fit <- outcome_sq_learner$train(outcome_sq_training_task)
 
-    # cauculate the plug-in estimate
-    v_y_1 <- mean(q_1_sq) - mean(q_1)^2
-    v_y_0 <- mean(q_0_sq) - mean(q_0)^2
-    g_1 <- sum(a_original) / nrow(data)
-    g_0 <- 1 - g_1
-    es_plugin <- (mean(q_1) - mean(q_0)) / sqrt(g_0 * v_y_0 + g_1 * v_y_1)
-    
-    # estimate the influence curve
-    d_1_0 <- (a_original == 0) / (1 - ps) * (data$y - q_0) + q_0 - mean(q_0)
-    d_1_1 <- (a_original == 1) / ps * (data$y - q_1) + q_1 - mean(q_1)
-    d_2_0 <- (a_original == 0) / (1 - ps) * (data$y_sq - q_0_sq) + q_0_sq - mean(q_0_sq)
-    d_2_1 <- (a_original == 1) / ps * (data$y_sq - q_1_sq) + q_1_sq - mean(q_1_sq)
-    d_g_0 <- (a_original == 0) - g_0
+    ps_validation_task <- make_sl3_Task(
+      data = validation_data,
+      outcome = "a",
+      covariates = c("w1", "w2")
+    )
+    ps[validation_indices] <- ps_fit$predict(ps_validation_task)
 
-    # calculate the correction term
-    z <- g_0 * v_y_0 + g_1 * v_y_1
-    ic_1_1 <- (g_0 * v_y_0 + g_1 * (mean(q_1_sq) - mean(q_1) * mean(q_0))) / z ^ (1.5) * d_1_1
-    ic_1_0 <- ((-g_0) * (mean(q_0_sq) - mean(q_0) * mean(q_1)) - g_1 * v_y_1) / z ^ (1.5) * d_1_0
-    ic_2_1 <- g_1 * (mean(q_1) - mean(q_0)) / z ^ (1.5) * d_2_1 * (-1/2)
-    ic_2_0 <- g_0 * (mean(q_1) - mean(q_0)) / z ^ (1.5) * d_2_0 * (-1/2)
-    ic_g_0 <- (mean(q_1) - mean(q_0)) * (v_y_0 - v_y_1) / z ^ (1.5) * d_g_0 * (-1/2)
-    ic <- ic_1_0 + ic_1_1 + ic_2_0 + ic_2_1 + ic_g_0
+    validation_data_1 <- validation_data
+    validation_data_1$a <- 1
+    validation_data_0 <- validation_data
+    validation_data_0$a <- 0
 
-    # calculate the one-step estimate
-    es_one_step <- es_plugin + mean(ic)
+    q_1[validation_indices] <- outcome_fit$predict(
+      make_prediction_task(validation_data_1, "y")
+    )
+    q_0[validation_indices] <- outcome_fit$predict(
+      make_prediction_task(validation_data_0, "y")
+    )
+    q_1_sq[validation_indices] <- outcome_sq_fit$predict(
+      make_prediction_task(validation_data_1, "y_sq")
+    )
+    q_0_sq[validation_indices] <- outcome_sq_fit$predict(
+      make_prediction_task(validation_data_0, "y_sq")
+    )
+  }
 
-    # calculate the confidence interval
-    ic_var <- var(ic)
-    ic_se <- sqrt(ic_var / nrow(data))
-    es_one_step_lb <- es_one_step - 1.96 * ic_se
-    es_one_step_ub <- es_one_step + 1.96 * ic_se
 
-    return(data.frame(
-        es_plugin = es_plugin,
-        es_one_step = es_one_step,
-        es_one_step_lb = es_one_step_lb,
-        es_one_step_ub = es_one_step_ub
-    ))
+  ps <- pmin(pmax(ps, ps_bound), 1 - ps_bound)
+
+  y_1_os <- (data$a == 1) / ps * (data$y - q_1) + q_1
+  y_0_os <- (data$a == 0) / (1 - ps) * (data$y - q_0) + q_0
+  y_1_sq_os <- (data$a == 1) / ps * (data$y_sq - q_1_sq) + q_1_sq
+  y_0_sq_os <- (data$a == 0) / (1 - ps) * (data$y_sq - q_0_sq) + q_0_sq
+
+  mu_1 <- mean(y_1_os)
+  mu_0 <- mean(y_0_os)
+  nu_1 <- mean(y_1_sq_os)
+  nu_0 <- mean(y_0_sq_os)
+  v_y_1 <- nu_1 - mu_1 ^ 2
+  v_y_0 <- nu_0 - mu_0 ^ 2
+  g_1 <- g_0 <- 0.5
+  z <- g_0 * v_y_0 + g_1 * v_y_1
+  if (!is.finite(z) || z <= 0) {
+    stop("estimated pooled potential-outcome variance is not positive")
+  }
+
+  ate <- mu_1 - mu_0
+  est <- ate / sqrt(z)
+
+  d_mu_1 <- y_1_os - mu_1
+  d_mu_0 <- y_0_os - mu_0
+  d_nu_1 <- y_1_sq_os - nu_1
+  d_nu_0 <- y_0_sq_os - nu_0
+  ic <- (d_mu_1 - d_mu_0) / sqrt(z) -
+    ate / (2 * z ^ 1.5) * (
+      g_1 * (d_nu_1 - 2 * mu_1 * d_mu_1) +
+        g_0 * (d_nu_0 - 2 * mu_0 * d_mu_0)
+    )
+
+  alpha <- 1 - conf_level
+  critical_value <- qnorm(1 - alpha / 2)
+  est_se <- sqrt(var(ic) / n)
+  est_lb <- est - critical_value * est_se
+  est_ub <- est + critical_value * est_se
+
+  ate_ic <- y_1_os - y_0_os - ate
+  resi_result <- resi_estimation(
+    ate = ate,
+    ate_ic = ate_ic,
+    n = n,
+    conf_level = conf_level
+  )
+
+  data.frame(
+    est = est,
+    est_se = est_se,
+    est_lb = est_lb,
+    est_ub = est_ub,
+    resi = resi_result$resi,
+    resi_lb = resi_result$resi_lb,
+    resi_ub = resi_result$resi_ub
+  )
+}
+
+# Bias-corrected scalar RESI and a noncentral chi-square confidence interval.
+resi_estimation <- function(ate, ate_ic, n, conf_level = 0.95) {
+  ate_ic_variance <- var(ate_ic)
+  if (!is.finite(ate_ic_variance) || ate_ic_variance <= 0) {
+    stop("the estimated ATE influence-curve variance is not positive")
+  }
+
+  wald_statistic <- n * ate ^ 2 / ate_ic_variance
+  resi <- sqrt(max(0, (wald_statistic - 1) / n))
+  ncp_limits <- suppressWarnings(
+    conf.limits.nc.chisq(
+      Chi.Square = wald_statistic,
+      conf.level = conf_level,
+      df = 1
+    )
+  )
+
+  data.frame(
+    resi = resi,
+    resi_lb = sqrt(ncp_limits$Lower.Limit / n),
+    resi_ub = sqrt(ncp_limits$Upper.Limit / n)
+  )
 }

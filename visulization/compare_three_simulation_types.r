@@ -7,6 +7,8 @@ library(dplyr)
 library(tidyr)
 library(gridExtra)
 library(viridis)
+library(patchwork)
+library(ggh4x)
 
 # =============================================================================
 # SETUP DIRECTORIES AND PATHS
@@ -208,6 +210,17 @@ mse_data <- summary_stats %>%
                            levels = c("cohens_d_mse", "robust_cohens_d_mse", "es_one_step_mse"),
                            labels = c("Cohen's d", "rescaled RESI", "One-step causal Cohen's d")))
 
+# Compute per-effect-size y-limits to share across rows (RCT conditions)
+mse_limits <- mse_data %>%
+  group_by(vtype_factor) %>%
+  summarise(ymax = max(mse, na.rm = TRUE), .groups = "drop") %>%
+  mutate(ymax = ifelse(is.finite(ymax), ymax * 1.05, NA_real_))
+
+lim_small <- mse_limits$ymax[mse_limits$vtype_factor == "Small"]
+lim_medium <- mse_limits$ymax[mse_limits$vtype_factor == "Medium"]
+lim_large <- mse_limits$ymax[mse_limits$vtype_factor == "Large"]
+lim_huge <- mse_limits$ymax[mse_limits$vtype_factor == "Huge"]
+
 # Create MSE plot
 p_mse <- ggplot(
   mse_data,
@@ -216,10 +229,11 @@ p_mse <- ggplot(
   geom_line(linewidth = 1.2, alpha = 0.9) +
   geom_point(size = 2.5, stroke = 0.4) +
   geom_hline(yintercept = 0, linewidth = 0.5, color = "black", alpha = 0.9) +
-  facet_grid(simulation_type ~ vtype_factor, scales = "free_y", switch = "y") +
+  facet_grid(simulation_type ~ vtype_factor, switch = "y") +
   scale_color_viridis_d(name = "Estimator") +
   scale_linetype_manual(values = c("solid", "dashed", "twodash", "dotdash"), guide = "none") +
   scale_shape_manual(values = c(16, 17, 15, 18), guide = "none") +
+  coord_cartesian(ylim = c(0, 0.13)) +
   labs(
     title = "Mean Squared Error Comparison Across Three Simulation Types",
     x = "Sample Size",
@@ -239,6 +253,77 @@ p_mse <- ggplot(
 # Save MSE plot
 ggsave(paste0(save_dir, "/mse_comparison_three_types.png"), p_mse, width = 12, height = 8, dpi = 300)
 ggsave(paste0(save_dir, "/mse_comparison_three_types.pdf"), p_mse, width = 12, height = 8)
+
+# =============================================================================
+# 2B. SUBSET MSE PLOT: SMALL & MEDIUM × RCT IMBALANCED & CONFOUNDED
+# =============================================================================
+
+cat("Creating subset MSE comparison plot (Large & Huge, RCT imbalanced & Confounded)...\n")
+
+# Filter data for the subset: Large and Huge effect sizes
+mse_subset <- mse_data %>%
+  filter(vtype_factor %in% c("Large", "Huge")) %>%
+  filter(simulation_type %in% c("RCT (imbalanced)", "Confounded"))
+
+# Compute overall y-limit for subset to ensure all lines are visible
+mse_subset_max <- max(mse_subset$mse, na.rm = TRUE)
+y_upper_subset <- ifelse(is.finite(mse_subset_max), mse_subset_max * 1.1, 1)
+
+# Create subset MSE plot
+p_mse_subset <- ggplot(
+  mse_subset,
+  aes(x = n_factor, y = mse, color = estimator, linetype = estimator, shape = estimator, group = estimator)
+) +
+  geom_line(linewidth = 1.2, alpha = 0.9) +
+  geom_point(size = 2.5, stroke = 0.4) +
+  geom_hline(yintercept = 0, linewidth = 0.5, color = "black", alpha = 0.9) +
+  facet_grid(simulation_type ~ vtype_factor, switch = "y") +
+  scale_color_viridis_d(name = "Estimator") +
+  scale_linetype_manual(values = c("solid", "dashed", "twodash"), guide = "none") +
+  scale_shape_manual(values = c(16, 17, 15), guide = "none") +
+  scale_y_continuous(limits = c(0, y_upper_subset)) +
+  labs(
+    x = "Sample Size",
+    y = "MSE"
+  ) +
+  my_theme +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.placement = "outside",
+    strip.background = element_rect(fill = NA, color = NA),
+    legend.position = "bottom",
+    legend.box = "vertical",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
+  )
+
+# Save subset MSE plot
+ggsave(paste0(save_dir, "/mse_subset_small_medium.png"), p_mse_subset, width = 8, height = 6, dpi = 300)
+ggsave(paste0(save_dir, "/mse_subset_small_medium.pdf"), p_mse_subset, width = 8, height = 6)
+
+# =============================================================================
+# 2C. COMBINED MSE PLOT: FULL + SUBSET
+# =============================================================================
+
+cat("Creating combined MSE plot (full + subset)...\n")
+
+# Combine using patchwork with layout: full plot on left, subset on right
+# Add panel tags A and B at bottom-left (left of legend)
+p_mse_combined <- p_mse + p_mse_subset + 
+  plot_layout(widths = c(2, 1)) +
+  plot_annotation(
+    title = "Mean Squared Error Comparison",
+    tag_levels = 'A',
+    theme = theme(
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+      plot.tag = element_text(size = 16, face = "bold"),
+      plot.tag.position = c(0.05, 0.02)
+    )
+  )
+
+# Save combined plot
+ggsave(paste0(save_dir, "/mse_combined_full_and_subset.png"), p_mse_combined, width = 18, height = 8, dpi = 300)
+ggsave(paste0(save_dir, "/mse_combined_full_and_subset.pdf"), p_mse_combined, width = 18, height = 8)
 
 # =============================================================================
 # 3. COVERAGE COMPARISON PLOT
@@ -330,11 +415,13 @@ ggsave(paste0(save_dir, "/ci_width_comparison_three_types.png"), p_ci_width,
 # =============================================================================
 
 cat("\n=== THREE-WAY COMPARISON COMPLETE ===\n")
-cat("Created 4 comparison plots:\n")
+cat("Created 6 comparison plots:\n")
 cat("1. bias_comparison_three_types.png\n")
-cat("2. mse_comparison_three_types.png\n")
-cat("3. coverage_comparison_three_types.png\n")
-cat("4. ci_width_comparison_three_types.png\n")
+cat("2. mse_comparison_three_types.png (y-scale: 0-0.13)\n")
+cat("3. mse_subset_small_medium.png (Large & Huge effect sizes, RCT imbalanced & Confounded)\n")
+cat("4. mse_combined_full_and_subset.png (Panel A: Full, Panel B: Large & Huge subset)\n")
+cat("5. coverage_comparison_three_types.png\n")
+cat("6. ci_width_comparison_three_types.png\n")
 cat("\nAll plots saved in:", save_dir, "\n")
 cat("Combined summary statistics saved as: combined_summary_statistics.csv\n")
 
